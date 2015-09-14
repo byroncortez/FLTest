@@ -5,18 +5,22 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Toast;
 
 import com.android.volley.VolleyError;
+
+import java.util.List;
 
 import butterknife.Bind;
 import butterknife.ButterKnife;
 import test.freelancer.com.fltest.R;
 import test.freelancer.com.fltest.adapter.TVAdapter;
 import test.freelancer.com.fltest.controller.ProgramApp;
+import test.freelancer.com.fltest.dao.Program;
+import test.freelancer.com.fltest.dao.ProgramDao;
 import test.freelancer.com.fltest.util.EndlessRecyclerOnScrollListener;
 import test.freelancer.com.fltest.volley.ResponsePrograms;
 import test.freelancer.com.fltest.volley.TVRequest;
@@ -35,7 +39,7 @@ public class ListFragment extends Fragment implements ResponseListener<ResponseP
     TVAdapter mAdapter;
     
     private int currentIndex = 0;
-    private int totalCount;
+    private int totalCount = 0;
 
     @Nullable
     @Override
@@ -55,6 +59,8 @@ public class ListFragment extends Fragment implements ResponseListener<ResponseP
                 currentIndex += 10;
                 if (currentIndex < totalCount) {
                     requestPrograms();
+                } else {
+                    mAdapter.disableLoading();;
                 }
             }
 
@@ -70,7 +76,7 @@ public class ListFragment extends Fragment implements ResponseListener<ResponseP
     
     private void requestPrograms() {
         ProgramApp app = (ProgramApp) getActivity().getApplication();
-        TVRequest tvRequest = new TVRequest(currentIndex, this);
+        TVRequest tvRequest = new TVRequest(getActivity(), currentIndex, this);
         app.getRequestQueue().add(tvRequest);
     }
 
@@ -88,9 +94,19 @@ public class ListFragment extends Fragment implements ResponseListener<ResponseP
 
     @Override
     public void onErrorResponse(VolleyError error) {
-        if (mAdapter.getItemCount() > 0) {
-            // show error toast
+        if (mAdapter.getItemCount() > 1) {
+            if (getActivity() != null) {
+                Toast.makeText(getActivity(), "Error encountered", Toast.LENGTH_LONG).show();
+            }
+        } else {
+            ProgramApp app = (ProgramApp) getActivity().getApplication();
+            ProgramDao programDao = app.getDaoSession().getProgramDao();
+            List<Program> programs = programDao.queryBuilder()
+                    .list();
+            if (programs != null && programs.size() > 0) {
+                mAdapter.add(programs);
+            }
+            Toast.makeText(getActivity(), "Error getting data", Toast.LENGTH_LONG).show();
         }
-        Log.d(TAG, "Error in response");
     }
 }
